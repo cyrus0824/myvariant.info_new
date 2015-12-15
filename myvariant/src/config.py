@@ -15,6 +15,9 @@ ALLOWED_OPTIONS = ['_source', 'start', 'from_', 'size',
 ES_SCROLL_TIME = '1m'
 ES_SCROLL_SIZE = 1000
 
+# Specific for variants
+ES_HG38_INDEX = ''
+
 # *****************************************************************************
 # Google Analytics Settings
 # *****************************************************************************
@@ -42,7 +45,7 @@ ANNOTATION_ENDPOINT = 'variant'
 QUERY_ENDPOINT = 'query'
 API_VERSION = 'v1'
 # TODO Fill in a status id here
-STATUS_CHECK_ID = ''
+STATUS_CHECK_ID = 'chr6:g.152708291G>A'
 # Path to a file containing a json object with information about elasticsearch fields
 FIELD_NOTES_PATH = ''
 
@@ -52,7 +55,7 @@ FIELD_NOTES_PATH = ''
 
 
 # *****************************************************************************
-# Settings class
+# Config class
 # *****************************************************************************
 
 class MyVariantSettings():
@@ -96,6 +99,10 @@ class MyVariantSettings():
     @property
     def es_doc_type(self):
         return ES_DOC_TYPE
+
+    @property
+    def es_hg38_index(self):
+        return ES_HG38_INDEX
 
     @property
     def allowed_options(self):

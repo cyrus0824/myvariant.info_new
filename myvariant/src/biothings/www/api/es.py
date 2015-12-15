@@ -23,6 +23,7 @@ class ESQuery():
         self._allowed_options = settings.allowed_options or ALLOWED_OPTIONS
         self._scroll_time = settings.scroll_time
         self._total_scroll_size = settings.scroll_size   # Total number of hits to return per scroll batch
+        self._settings = settings
         if self._total_scroll_size % self.get_number_of_shards() == 0:
             # Total hits per shard per scroll batch
             self._scroll_size = int(self._total_scroll_size / self.get_number_of_shards())
