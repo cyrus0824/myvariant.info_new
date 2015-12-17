@@ -75,11 +75,24 @@ class MetaDataHandler(MetaDataHandler):
         })
 
 def return_applist():
-    return [
-        (r"/variant/(.+)/?", VariantHandler),
-        (r"/variant/?$", VariantHandler),
-        (r"/query/?", QueryHandler),
+    settings = config.MyVariantSettings()
+    ret = [
         (r"/status", StatusHandler),
         (r"/metadata", MetaDataHandler),
         (r"/metadata/fields", FieldsHandler),
     ]
+    if settings._api_version:
+        ret += [
+            (r"/" + settings._api_version + "/metadata", MetaDataHandler),
+            (r"/" + settings._api_version + "/metadata/fields", FieldsHandler),
+            (r"/" + settings._api_version + "/variant/(.+)/?", VariantHandler),
+            (r"/" + settings._api_version + "/variant/?$", VariantHandler),
+            (r"/" + settings._api_version + "/query/?", QueryHandler),
+        ]
+    else:
+        ret += [
+            (r"/variant/(.+)/?", VariantHandler),
+            (r"/variant/?$", VariantHandler),
+            (r"/query/?", QueryHandler),
+        ]
+    return ret

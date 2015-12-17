@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from biothings.www.api.es import ESQuery
+import re
 
 class ESQuery(ESQuery):
     def _use_hg38(self):
