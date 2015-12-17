@@ -7,21 +7,17 @@ class VariantHandler(BiothingHandler):
     ''' This class is for the /variant endpoint. '''
     _settings = config.MyVariantSettings()
     esq = ESQuery(_settings)
+    boolean_parameters = set(['raw', 'rawquery', 'fetch_all', 'explain', 'jsonld'])
 
     def _examine_kwargs(self, action, kwargs):
         if kwargs.pop('hg38', False):
             self.esq._use_hg38()
-        #if action == 'GET':
-        #    pass
-        #elif action == 'POST':
-        #    pass
-        #pass
-
 
 class QueryHandler(QueryHandler):
     ''' This class is for the /query endpoint. '''
     _settings = config.MyVariantSettings()
     esq = ESQuery(_settings)
+    boolean_parameters = set(['raw', 'rawquery', 'fetch_all', 'explain', 'jsonld'])
 
 class StatusHandler(StatusHandler):
     ''' This class is for the /status endpoint. '''

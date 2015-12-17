@@ -31,7 +31,7 @@ class ESQuery():
             raise ScrollSetupError("_total_scroll_size of {} can't be ".format(self._total_scroll_size) +
                                      "divided evenly among {} shards.".format(self.get_number_of_shards()))
 
-    def _get_biothingdoc(self, hit):
+    def _get_biothingdoc(self, hit, options=None):
         doc = hit.get('_source', hit.get('fields', {}))
         doc.setdefault('_id', hit['_id'])
         for attr in ['_score', '_version']:
@@ -42,14 +42,14 @@ class ESQuery():
             # if found is false, pass that to the doc
             doc['found'] = hit['found']
         # add other keys to object, if necessary
-        doc = self._modify_biothingdoc(doc)
+        doc = self._modify_biothingdoc(doc=doc, options=options)
         return doc
 
-    def _modify_biothingdoc(self, doc):
+    def _modify_biothingdoc(self, doc, options=None):
         # function for overriding in subclass
         return doc
 
-    def _cleaned_res(self, res, empty=[], error={'error': True}, single_hit=False):
+    def _cleaned_res(self, res, empty=[], error={'error': True}, single_hit=False, options=None):
         '''res is the dictionary returned from a query.
            do some reformating of raw ES results before returning.
 
@@ -63,11 +63,11 @@ class ESQuery():
         if total == 0:
             return empty
         elif total == 1 and single_hit:
-            return self._get_biothingdoc(hits['hits'][0])
+            return self._get_biothingdoc(hit=hits['hits'][0], options=options)
         else:
-            return [self._get_biothingdoc(hit) for hit in hits['hits']]
+            return [self._get_biothingdoc(hit=hit, options=options) for hit in hits['hits']]
 
-    def _cleaned_res2(self, res):
+    def _cleaned_res2(self, res, options=None):
         '''res is the dictionary returned from a query.
            do some reformating of raw ES results before returning.
 
@@ -77,7 +77,7 @@ class ESQuery():
         for attr in ['took', 'facets', 'aggregations', '_scroll_id']:
             if attr in res:
                 _res[attr] = res[attr]
-        _res['hits'] = [self._get_biothingdoc(hit) for hit in _res['hits']]
+        _res['hits'] = [self._get_biothingdoc(hit=hit, options=options) for hit in _res['hits']]
         return _res
 
     def _cleaned_scopes(self, scopes):
@@ -136,6 +136,10 @@ class ESQuery():
                 _facets[field] = {"terms": {"field": field}}
             return _facets
 
+    def _get_options(self, options, kwargs):
+        ''' Function to override to add more options to the get_cleaned_query_options function below .'''
+        return options
+
     def _get_cleaned_query_options(self, kwargs):
         """common helper for processing fields, kwargs and other options passed to ESQueryBuilder."""
         options = dotdict()
@@ -143,6 +147,7 @@ class ESQuery():
         options.rawquery = kwargs.pop('rawquery', False)
         options.fetch_all = kwargs.pop('fetch_all', False)
         options.host = kwargs.pop('host', 'myvariant.info')
+        options = self._get_options(options, kwargs)
         scopes = kwargs.pop('scopes', None)
         if scopes:
             options.scopes = self._cleaned_scopes(scopes)
@@ -183,7 +188,7 @@ class ESQuery():
         if options.raw:
             return res
 
-        res = self._get_biothingdoc(res)
+        res = self._get_biothingdoc(res, options=options)
         return res
 
     def mget_biothings(self, bid_list, **kwargs):
@@ -207,7 +212,7 @@ class ESQuery():
         for i in range(len(res)):
             hits = res[i]
             qterm = bid_list[i]
-            hits = self._cleaned_res(hits, empty=[], single_hit=False)
+            hits = self._cleaned_res(hits, empty=[], single_hit=False, options=options)
             if len(hits) == 0:
                 _res.append({u'query': qterm,
                              u'notfound': True})
@@ -220,39 +225,34 @@ class ESQuery():
                     _res.append(hit)
         return _res
 
+
     def query(self, q, **kwargs):
-        # Check if special interval query pattern exists
-        interval_query = self._parse_interval_query(q)
         facets = self._parse_facets_option(kwargs)
         options = self._get_cleaned_query_options(kwargs)
         scroll_options = {}
         if options.fetch_all:
             scroll_options.update({'search_type': 'scan', 'size': self._scroll_size, 'scroll': self._scroll_time})
         options['kwargs'].update(scroll_options)
-        if interval_query:
-            options['kwargs'].update(interval_query)
-            res = self.query_interval(**options.kwargs)
-        else:
-            _query = {
-                "query": {
-                    "query_string": {
-                        #"default_field" : "content",
-                        "query": q
+        _query = {
+            "query": {
+                "query_string": {
+                    #"default_field" : "content",
+                    "query": q
                     }
                 }
             }
-            if facets:
-                _query['facets'] = facets
-            try:
-                res = self._es.search(index=self._index, doc_type=self._doc_type, body=_query, **options.kwargs)
-            except RequestError:
-                return {"error": "invalid query term.", "success": False}
+        if facets:
+            _query['facets'] = facets
+        try:
+            res = self._es.search(index=self._index, doc_type=self._doc_type, body=_query, **options.kwargs)
+        except RequestError:
+            return {"error": "invalid query term.", "success": False}
 
         # if options.fetch_all:
         #     return res
 
         if not options.raw:
-            res = self._cleaned_res2(res)
+            res = self._cleaned_res2(res, options=options)
         return res
 
     def scroll(self, scroll_id, **kwargs):
@@ -264,7 +264,7 @@ class ESQuery():
             return {'success': False, 'error': 'No results to return.'}
         else:
             if not options.raw:
-                res = self._cleaned_res2(r)
+                res = self._cleaned_res2(r, options=options)
             # res.update({'_scroll_id': scroll_id})
             if r['_shards']['failed']:
                 res.update({'_warning': 'Scroll request has failed on {} shards out of {}.'.format(r['_shards']['failed'], r['_shards']['total'])})

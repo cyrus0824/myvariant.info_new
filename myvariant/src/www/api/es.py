@@ -20,49 +20,44 @@ class ESQuery(ESQuery):
             if mat:
                 return mat.groupdict()
 
+    def query(self, q, **kwargs):
+        # Check if special interval query pattern exists
+        interval_query = self._parse_interval_query(q)
+        facets = self._parse_facets_option(kwargs)
+        options = self._get_cleaned_query_options(kwargs)
+        scroll_options = {}
+        if options.fetch_all:
+            scroll_options.update({'search_type': 'scan', 'size': self._scroll_size, 'scroll': self._scroll_time})
+        options['kwargs'].update(scroll_options)
+        if interval_query:
+            options['kwargs'].update(interval_query)
+            res = self.query_interval(**options.kwargs)
+        else:
+            _query = {
+                "query": {
+                    "query_string": {
+                        #"default_field" : "content",
+                        "query": q
+                    }
+                }
+            }
+            if facets:
+                _query['facets'] = facets
+            try:
+                res = self._es.search(index=self._index, doc_type=self._doc_type, body=_query, **options.kwargs)
+            except RequestError:
+                return {"error": "invalid query term.", "success": False}
+
+        if not options.raw:
+            res = self._cleaned_res2(res, options=options)
+        return res
+
     def query_interval(self, chr, gstart, gend, **kwargs):
         #gstart = safe_genome_pos(gstart)
         #gend = safe_genome_pos(gend)
         if chr.lower().startswith('chr'):
             chr = chr[3:]
-        # _query = {
-        #     "query": {
-        #         "bool": {
-        #             "should": [
-        #                 {
-        #                     "bool": {
-        #                         "must": [
-        #                             {
-        #                                 "term": {"chrom": chr.lower()}
-        #                             },
-        #                             {
-        #                                 "range": {"chromStart": {"lte": gend}}
-        #                             },
-        #                             {
-        #                                 "range": {"chromEnd": {"gte": gstart}}
-        #                             }
-        #                         ]
-        #                     }
-        #                 },
-        #                 {
-        #                     "bool": {
-        #                         "must": [
-        #                             {
-        #                                 "term": {"chrom": chr.lower()}
-        #                             },
-        #                             {
-        #                                 "range": {"dbnsfp.hg19.start": {"lte": gend}}
-        #                             },
-        #                             {
-        #                                 "range": {"dbnsfp.hg19.end": {"gte": gstart}}
-        #                             }
-        #                         ]
-        #                     }
-        #                 }
-        #             ]
-        #         }
-        #     }
-        # }
+
         _query = {
             "query": {
                 "bool": {
@@ -90,8 +85,14 @@ class ESQuery(ESQuery):
             _query["query"]["bool"]["should"].append(_q)
         return self._es.search(index=self._index, doc_type=self._doc_type, body=_query, **kwargs)
 
-    def _modify_biothing_doc(self, doc):
+    def _get_options(self, options, kwargs):
+        options.jsonld = kwargs.pop('jsonld', False)
+        return options
+
+    def _modify_biothingdoc(self, doc, options=None):
         # Subclass to insert cadd key
         if 'cadd' in doc:
             doc['cadd']['_license'] = 'http://goo.gl/bkpNhq'
+        if options and options.jsonld:
+            doc['@context'] = 'http://' + options.host + '/context/variant.jsonld'
         return doc
