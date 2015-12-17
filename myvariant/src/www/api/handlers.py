@@ -5,8 +5,8 @@ import config
 
 class VariantHandler(BiothingHandler):
     ''' This class is for the /variant endpoint. '''
-    settings = config.MyVariantSettings()
-    esq = ESQuery(settings)
+    _settings = config.MyVariantSettings()
+    esq = ESQuery(_settings)
 
     def _examine_kwargs(self, action, kwargs):
         if kwargs.pop('hg38', False):
@@ -20,23 +20,23 @@ class VariantHandler(BiothingHandler):
 
 class QueryHandler(QueryHandler):
     ''' This class is for the /query endpoint. '''
-    settings = config.MyVariantSettings()
-    esq = ESQuery(settings)
+    _settings = config.MyVariantSettings()
+    esq = ESQuery(_settings)
 
 class StatusHandler(StatusHandler):
     ''' This class is for the /status endpoint. '''
-    settings = config.MyVariantSettings()
-    esq = ESQuery(settings)
+    _settings = config.MyVariantSettings()
+    esq = ESQuery(_settings)
 
 class FieldsHandler(FieldsHandler):
     ''' This class is for the /metadata/fields endpoint. '''
-    settings = config.MyVariantSettings()
-    esq = ESQuery(settings)
+    _settings = config.MyVariantSettings()
+    esq = ESQuery(_settings)
 
 class MetaDataHandler(MetaDataHandler):
     ''' This class is for the /metadata endpoint. '''
-    settings = config.MyVariantSettings()
-    esq = ESQuery(settings)
+    _settings = config.MyVariantSettings()
+    esq = ESQuery(_settings)
 
     disable_caching = True
 
@@ -75,19 +75,19 @@ class MetaDataHandler(MetaDataHandler):
         })
 
 def return_applist():
-    settings = config.MyVariantSettings()
+    _settings = config.MyVariantSettings()
     ret = [
         (r"/status", StatusHandler),
         (r"/metadata", MetaDataHandler),
         (r"/metadata/fields", FieldsHandler),
     ]
-    if settings._api_version:
+    if _settings._api_version:
         ret += [
-            (r"/" + settings._api_version + "/metadata", MetaDataHandler),
-            (r"/" + settings._api_version + "/metadata/fields", FieldsHandler),
-            (r"/" + settings._api_version + "/variant/(.+)/?", VariantHandler),
-            (r"/" + settings._api_version + "/variant/?$", VariantHandler),
-            (r"/" + settings._api_version + "/query/?", QueryHandler),
+            (r"/" + _settings._api_version + "/metadata", MetaDataHandler),
+            (r"/" + _settings._api_version + "/metadata/fields", FieldsHandler),
+            (r"/" + _settings._api_version + "/variant/(.+)/?", VariantHandler),
+            (r"/" + _settings._api_version + "/variant/?$", VariantHandler),
+            (r"/" + _settings._api_version + "/query/?", QueryHandler),
         ]
     else:
         ret += [

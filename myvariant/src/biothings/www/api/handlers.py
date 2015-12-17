@@ -9,7 +9,7 @@ class BiothingHandler(BaseHandler):
 
     def _ga_event_object(self, action, data={}):
         ''' Returns the google analytics object for requests on this endpoint (annotation handler).'''
-        return self.settings.ga_event_object(endpoint=self.settings._annotation_endpoint, action=action, data=data)
+        return self._settings.ga_event_object(endpoint=self._settings._annotation_endpoint, action=action, data=data)
 
 
     def _examine_kwargs(self, action, kwargs):
@@ -30,7 +30,7 @@ class BiothingHandler(BaseHandler):
             biothing_object = self.esq.get_biothing(bid, **kwargs)
             if biothing_object:
                 self.return_json(biothing_object)
-                self.ga_track(settings=self.settings, event=self._ga_event_object('GET'))
+                self.ga_track(settings=self._settings, event=self._ga_event_object('GET'))
             else:
                 raise HTTPError(404)
         else:
@@ -55,14 +55,14 @@ class BiothingHandler(BaseHandler):
             res = {'success': False, 'error': "Missing required parameters."}
         encode = not isinstance(res, str)    # when res is a string, e.g. when rawquery is true, do not encode it as json
         self.return_json(res, encode=encode)
-        self.ga_track(settings=self.settings, event=self.ga_event_object('POST', {'qsize': len(ids) if ids else 0}))
+        self.ga_track(settings=self._settings, event=self._ga_event_object('POST', {'qsize': len(ids) if ids else 0}))
 
 
 class QueryHandler(BaseHandler):
 
     def _ga_event_object(self, action, data={}):
         ''' Returns the google analytics object for requests on this endpoint (query handler).'''
-        return self.settings.ga_event_object(endpoint=self.settings._query_endpoint, action=action, data=data)
+        return self._settings.ga_event_object(endpoint=self._settings._query_endpoint, action=action, data=data)
 
     def _examine_kwargs(self, action, kwargs):
         ''' A function for sub-classing.  This will be run after the get_query_params but before the actual
@@ -108,12 +108,12 @@ class QueryHandler(BaseHandler):
             if not _has_error:
                 res = self.esq.query(q, **kwargs)
                 if kwargs.get('fetch_all', False):
-                    self.ga_track(settings=self.settings, event=self._ga_event_object('fetch_all', {'total': res.get('total', None)}))
+                    self.ga_track(settings=self._settings, event=self._ga_event_object('fetch_all', {'total': res.get('total', None)}))
         else:
             res = {'success': False, 'error': "Missing required parameters."}
 
         self.return_json(res)
-        self.ga_track(settings=self.settings, event=self._ga_event_object('GET', {'qsize': len(q) if q else 0}))
+        self.ga_track(settings=self._settings, event=self._ga_event_object('GET', {'qsize': len(q) if q else 0}))
 
     def post(self):
         '''
@@ -147,7 +147,7 @@ class QueryHandler(BaseHandler):
 
         encode = not isinstance(res, str)    # when res is a string, e.g. when rawquery is true, do not encode it as json
         self.return_json(res, encode=encode)
-        self.ga_track(settings=self.settings, event=self._ga_event_object('POST', {'qsize': len(q) if q else 0}))
+        self.ga_track(settings=self._settings, event=self._ga_event_object('POST', {'qsize': len(q) if q else 0}))
 
 
 class MetaDataHandler(BaseHandler):
@@ -160,8 +160,8 @@ class MetaDataHandler(BaseHandler):
 class FieldsHandler(BaseHandler):
 
     def get(self):
-        if self.settings.field_notes_path:
-            notes = json.load(open(settings.field_notes_path, 'r'))
+        if self._settings.field_notes_path:
+            notes = json.load(open(self._settings.field_notes_path, 'r'))
         else:
             notes = {}
         es_mapping = self.esq.query_fields()
@@ -197,7 +197,7 @@ class StatusHandler(BaseHandler):
     ''' Handles requests to check the status of the server. '''
 
     def head(self):
-        r = esq.status_check(self.settings.status_check_id)
+        r = esq.status_check(self._settings.status_check_id)
 
     def get(self):
         self.head()

@@ -94,3 +94,4 @@ class ESQuery(ESQuery):
         # Subclass to insert cadd key
         if 'cadd' in doc:
             doc['cadd']['_license'] = 'http://goo.gl/bkpNhq'
+        return doc

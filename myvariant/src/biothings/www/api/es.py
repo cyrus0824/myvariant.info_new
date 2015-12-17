@@ -42,12 +42,12 @@ class ESQuery():
             # if found is false, pass that to the doc
             doc['found'] = hit['found']
         # add other keys to object, if necessary
-        self._modify_biothingdoc(doc)
+        doc = self._modify_biothingdoc(doc)
         return doc
 
     def _modify_biothingdoc(self, doc):
         # function for overriding in subclass
-        pass
+        return doc
 
     def _cleaned_res(self, res, empty=[], error={'error': True}, single_hit=False):
         '''res is the dictionary returned from a query.
