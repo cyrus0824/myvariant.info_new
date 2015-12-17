@@ -55,7 +55,7 @@ class BiothingHandler(BaseHandler):
             res = {'success': False, 'error': "Missing required parameters."}
         encode = not isinstance(res, str)    # when res is a string, e.g. when rawquery is true, do not encode it as json
         self.return_json(res, encode=encode)
-        self._ga_track(settings=self.settings, event=self.ga_event_object('POST', {'qsize': len(ids) if ids else 0}))
+        self.ga_track(settings=self.settings, event=self.ga_event_object('POST', {'qsize': len(ids) if ids else 0}))
 
 
 class QueryHandler(BaseHandler):
