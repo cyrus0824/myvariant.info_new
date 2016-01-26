@@ -3,13 +3,15 @@ import json
 from tornado.web import HTTPError
 from biothings.www.helper import BaseHandler
 from biothings.utils.common import split_ids
+from biothings.settings import BiothingSettings
 
+biothing_settings = BiothingSettings()
 
 class BiothingHandler(BaseHandler):
 
     def _ga_event_object(self, action, data={}):
         ''' Returns the google analytics object for requests on this endpoint (annotation handler).'''
-        return self._settings.ga_event_object(endpoint=self._settings._annotation_endpoint, action=action, data=data)
+        return biothing_settings.ga_event_object(endpoint=biothing_settings._annotation_endpoint, action=action, data=data)
 
 
     def _examine_kwargs(self, action, kwargs):
@@ -30,7 +32,7 @@ class BiothingHandler(BaseHandler):
             biothing_object = self.esq.get_biothing(bid, **kwargs)
             if biothing_object:
                 self.return_json(biothing_object)
-                self.ga_track(settings=self._settings, event=self._ga_event_object('GET'))
+                self.ga_track(event=self._ga_event_object('GET'))
             else:
                 raise HTTPError(404)
         else:
@@ -55,14 +57,14 @@ class BiothingHandler(BaseHandler):
             res = {'success': False, 'error': "Missing required parameters."}
         encode = not isinstance(res, str)    # when res is a string, e.g. when rawquery is true, do not encode it as json
         self.return_json(res, encode=encode)
-        self.ga_track(settings=self._settings, event=self._ga_event_object('POST', {'qsize': len(ids) if ids else 0}))
+        self.ga_track(event=self._ga_event_object('POST', {'qsize': len(ids) if ids else 0}))
 
 
 class QueryHandler(BaseHandler):
 
     def _ga_event_object(self, action, data={}):
         ''' Returns the google analytics object for requests on this endpoint (query handler).'''
-        return self._settings.ga_event_object(endpoint=self._settings._query_endpoint, action=action, data=data)
+        return biothing_settings.ga_event_object(endpoint=biothing_settings._query_endpoint, action=action, data=data)
 
     def _examine_kwargs(self, action, kwargs):
         ''' A function for sub-classing.  This will be run after the get_query_params but before the actual
@@ -108,12 +110,12 @@ class QueryHandler(BaseHandler):
             if not _has_error:
                 res = self.esq.query(q, **kwargs)
                 if kwargs.get('fetch_all', False):
-                    self.ga_track(settings=self._settings, event=self._ga_event_object('fetch_all', {'total': res.get('total', None)}))
+                    self.ga_track(event=self._ga_event_object('fetch_all', {'total': res.get('total', None)}))
         else:
             res = {'success': False, 'error': "Missing required parameters."}
 
         self.return_json(res)
-        self.ga_track(settings=self._settings, event=self._ga_event_object('GET', {'qsize': len(q) if q else 0}))
+        self.ga_track(event=self._ga_event_object('GET', {'qsize': len(q) if q else 0}))
 
     def post(self):
         '''
@@ -147,31 +149,31 @@ class QueryHandler(BaseHandler):
 
         encode = not isinstance(res, str)    # when res is a string, e.g. when rawquery is true, do not encode it as json
         self.return_json(res, encode=encode)
-        self.ga_track(settings=self._settings, event=self._ga_event_object('POST', {'qsize': len(q) if q else 0}))
+        self.ga_track(event=self._ga_event_object('POST', {'qsize': len(q) if q else 0}))
 
 
 class MetaDataHandler(BaseHandler):
 
     def get(self):
-        # For now, just return a hardcoded object, later we'll actually query the ES db for this information
         self.return_json({})
 
 
 class FieldsHandler(BaseHandler):
 
     def get(self):
-        if self._settings.field_notes_path:
-            notes = json.load(open(self._settings.field_notes_path, 'r'))
+        if biothing_settings.field_notes_path:
+            notes = json.load(open(biothing_settings.field_notes_path, 'r'))
         else:
             notes = {}
         es_mapping = self.esq.query_fields()
+        kwargs = self.get_query_params()
 
         def get_indexed_properties_in_dict(d, prefix):
             r = {}
             for (k, v) in d.items():
                 r[prefix + '.' + k] = {}
                 r[prefix + '.' + k]['indexed'] = False
-                if 'type' in v:
+                if 'properties' not in v:
                     r[prefix + '.' + k]['type'] = v['type']
                     if ('index' not in v) or ('index' in v and v['index'] != 'no'):
                         # indexed field
@@ -186,18 +188,21 @@ class FieldsHandler(BaseHandler):
             return r
 
         r = {}
+        search = kwargs.pop('search', None)
+        prefix = kwargs.pop('prefix', None)
         for (k, v) in get_indexed_properties_in_dict(es_mapping, '').items():
             k1 = k.lstrip('.')
-            r[k1] = v
-            if k1 in notes:
-                r[k1]['notes'] = notes[k1]
+            if (search and search in k1) or (prefix and k1.startswith(prefix)) or (not search and not prefix):
+                r[k1] = v
+                if k1 in notes:
+                    r[k1]['notes'] = notes[k1]
         self.return_json(r)
 
 class StatusHandler(BaseHandler):
     ''' Handles requests to check the status of the server. '''
 
     def head(self):
-        r = esq.status_check(self._settings.status_check_id)
+        r = esq.status_check(biothing_settings.status_check_id)
 
     def get(self):
         self.head()

@@ -3,9 +3,9 @@ import json
 from biothings.utils.common import dotdict, is_str, is_seq
 from biothings.utils.es import get_es
 from elasticsearch import NotFoundError, RequestError
+from biothings.settings import BiothingSettings
 
-ALLOWED_OPTIONS = ['_source', 'start', 'from_', 'size',
-                   'sort', 'explain', 'version', 'facets', 'fetch_all', 'host']
+biothing_settings = BiothingSettings()
 
 class QueryError(Exception):
     pass
@@ -16,14 +16,14 @@ class ScrollSetupError(Exception):
 
 
 class ESQuery():
-    def __init__(self, settings):
-        self._es = get_es(settings.es_host)
-        self._index = settings.es_index
-        self._doc_type = settings.es_doc_type
-        self._allowed_options = settings.allowed_options or ALLOWED_OPTIONS
-        self._scroll_time = settings.scroll_time
-        self._total_scroll_size = settings.scroll_size   # Total number of hits to return per scroll batch
-        self._settings = settings
+    def __init__(self):
+        self._es = get_es(biothing_settings.es_host)
+        self._index = biothing_settings.es_index
+        self._doc_type = biothing_settings.es_doc_type
+        self._allowed_options = biothing_settings.allowed_options
+        self._scroll_time = biothing_settings.scroll_time
+        self._total_scroll_size = biothing_settings.scroll_size   # Total number of hits to return per scroll batch
+
         if self._total_scroll_size % self.get_number_of_shards() == 0:
             # Total hits per shard per scroll batch
             self._scroll_size = int(self._total_scroll_size / self.get_number_of_shards())
@@ -146,7 +146,7 @@ class ESQuery():
         options.raw = kwargs.pop('raw', False)
         options.rawquery = kwargs.pop('rawquery', False)
         options.fetch_all = kwargs.pop('fetch_all', False)
-        options.host = kwargs.pop('host', 'myvariant.info')
+        options.host = kwargs.pop('host', biothing_settings.ga_tracker_url)
         options = self._get_options(options, kwargs)
         scopes = kwargs.pop('scopes', None)
         if scopes:
@@ -225,7 +225,6 @@ class ESQuery():
                     _res.append(hit)
         return _res
 
-
     def query(self, q, **kwargs):
         facets = self._parse_facets_option(kwargs)
         options = self._get_cleaned_query_options(kwargs)
@@ -238,9 +237,9 @@ class ESQuery():
                 "query_string": {
                     #"default_field" : "content",
                     "query": q
-                    }
                 }
             }
+        }
         if facets:
             _query['facets'] = facets
         try:
@@ -277,7 +276,7 @@ class ESQuery():
 
     def status_check(self, bid):
         r = self.get_biothing(bid)
-        return
+        return r
 
 
 class ESQueryBuilder:

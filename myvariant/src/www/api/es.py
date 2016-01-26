@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from biothings.www.api.es import ESQuery
 import re
+import config
 
 class ESQuery(ESQuery):
     def _use_hg38(self):
-        self._index = self._settings.es_hg38_index
+        self._index = config.ES_HG38_INDEX
 
     def _parse_interval_query(self, query):
         '''Check if the input query string matches interval search regex,
@@ -52,6 +53,19 @@ class ESQuery(ESQuery):
             res = self._cleaned_res2(res, options=options)
         return res
 
+
+    def _modify_biothingdoc(self, doc, options=None):
+        # Subclass to insert cadd key
+        if 'cadd' in doc:
+            doc['cadd']['_license'] = 'http://goo.gl/bkpNhq'
+        if options and options.jsonld:
+            doc['@context'] = 'http://' + options.host + '/context/variant.jsonld'
+        return doc
+
+    def _get_options(self, options, kwargs):
+        options.jsonld = kwargs.pop('jsonld', False)
+        return options
+
     def query_interval(self, chr, gstart, gend, **kwargs):
         #gstart = safe_genome_pos(gstart)
         #gend = safe_genome_pos(gend)
@@ -85,14 +99,3 @@ class ESQuery(ESQuery):
             _query["query"]["bool"]["should"].append(_q)
         return self._es.search(index=self._index, doc_type=self._doc_type, body=_query, **kwargs)
 
-    def _get_options(self, options, kwargs):
-        options.jsonld = kwargs.pop('jsonld', False)
-        return options
-
-    def _modify_biothingdoc(self, doc, options=None):
-        # Subclass to insert cadd key
-        if 'cadd' in doc:
-            doc['cadd']['_license'] = 'http://goo.gl/bkpNhq'
-        if options and options.jsonld:
-            doc['@context'] = 'http://' + options.host + '/context/variant.jsonld'
-        return doc

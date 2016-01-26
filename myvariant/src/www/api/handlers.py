@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 from biothings.www.api.handlers import MetaDataHandler, BiothingHandler, QueryHandler, StatusHandler, FieldsHandler
+from biothings.settings import BiothingSettings
 from www.api.es import ESQuery
 import config
 
+biothing_settings = BiothingSettings()
+
 class VariantHandler(BiothingHandler):
     ''' This class is for the /variant endpoint. '''
-    _settings = config.MyVariantSettings()
-    esq = ESQuery(_settings)
+    esq = ESQuery()
     boolean_parameters = set(['raw', 'rawquery', 'fetch_all', 'explain', 'jsonld'])
 
     def _examine_kwargs(self, action, kwargs):
@@ -15,24 +17,20 @@ class VariantHandler(BiothingHandler):
 
 class QueryHandler(QueryHandler):
     ''' This class is for the /query endpoint. '''
-    _settings = config.MyVariantSettings()
-    esq = ESQuery(_settings)
+    esq = ESQuery()
     boolean_parameters = set(['raw', 'rawquery', 'fetch_all', 'explain', 'jsonld'])
 
 class StatusHandler(StatusHandler):
     ''' This class is for the /status endpoint. '''
-    _settings = config.MyVariantSettings()
-    esq = ESQuery(_settings)
+    esq = ESQuery()
 
 class FieldsHandler(FieldsHandler):
     ''' This class is for the /metadata/fields endpoint. '''
-    _settings = config.MyVariantSettings()
-    esq = ESQuery(_settings)
+    esq = ESQuery()
 
 class MetaDataHandler(MetaDataHandler):
     ''' This class is for the /metadata endpoint. '''
-    _settings = config.MyVariantSettings()
-    esq = ESQuery(_settings)
+    esq = ESQuery()
 
     disable_caching = True
 
@@ -69,21 +67,19 @@ class MetaDataHandler(MetaDataHandler):
             },
             "timestamp": "2015-10-21T07:02:18.178506"
         })
-
 def return_applist():
-    _settings = config.MyVariantSettings()
     ret = [
         (r"/status", StatusHandler),
         (r"/metadata", MetaDataHandler),
         (r"/metadata/fields", FieldsHandler),
     ]
-    if _settings._api_version:
+    if biothing_settings._api_version:
         ret += [
-            (r"/" + _settings._api_version + "/metadata", MetaDataHandler),
-            (r"/" + _settings._api_version + "/metadata/fields", FieldsHandler),
-            (r"/" + _settings._api_version + "/variant/(.+)/?", VariantHandler),
-            (r"/" + _settings._api_version + "/variant/?$", VariantHandler),
-            (r"/" + _settings._api_version + "/query/?", QueryHandler),
+            (r"/" + biothing_settings._api_version + "/metadata", MetaDataHandler),
+            (r"/" + biothing_settings._api_version + "/metadata/fields", FieldsHandler),
+            (r"/" + biothing_settings._api_version + "/variant/(.+)/?", VariantHandler),
+            (r"/" + biothing_settings._api_version + "/variant/?$", VariantHandler),
+            (r"/" + biothing_settings._api_version + "/query/?", QueryHandler),
         ]
     else:
         ret += [
